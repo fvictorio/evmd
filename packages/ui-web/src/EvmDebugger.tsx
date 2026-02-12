@@ -7,6 +7,7 @@ import { MemoryView } from "./components/MemoryView.js";
 import { StorageView } from "./components/StorageView.js";
 import { BytecodeView } from "./components/BytecodeView.js";
 import { CallStackView } from "./components/CallStackView.js";
+import { ReturnDataView } from "./components/ReturnDataView.js";
 
 export function EvmDebugger({ engine }: { engine: EvmEngine }) {
   const controller = useDebugger(engine);
@@ -32,6 +33,10 @@ export function EvmDebugger({ engine }: { engine: EvmEngine }) {
           {controller.visiblePanels.callStack && (
             <CallStackView session={controller.session} />
           )}
+          {controller.visiblePanels.returnData &&
+            controller.session.isAtFrameEnd && (
+              <ReturnDataView session={controller.session} />
+            )}
         </div>
       )}
     </div>

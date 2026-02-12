@@ -15,6 +15,7 @@ const defaultPanelVisibility: PanelVisibility = {
   transientStorage: false,
   callStack: true,
   bytecode: true,
+  returnData: true,
 };
 
 export function useDebugger(engine: EvmEngine): DebuggerController {
@@ -88,7 +89,7 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
     } else {
       bytecode = bytecodeSource;
     }
-    const trace = await engine.execute({ bytecode, mode: "call" });
+    const trace = await engine.execute({ bytecode, mode: "deploy" });
     setSession(new DebugSession(trace));
   }, [engine, inputMode, mnemonicSource, bytecodeSource]);
 

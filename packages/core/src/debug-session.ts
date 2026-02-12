@@ -30,80 +30,85 @@ export class DebugSession {
     return this.flatSteps[this._globalStepIndex].stepIndex;
   }
 
-  get currentStep(): Step {
-    const { frame, stepIndex } = this.flatSteps[this._globalStepIndex];
-    return frame.steps[stepIndex];
+  get currentStep(): Step | null {
+    const flatStep = this.flatSteps[this._globalStepIndex];
+    if (flatStep.isFrameEnd) {
+      return null;
+    }
+    return flatStep.frame.steps[flatStep.stepIndex];
   }
 
-  // --- Navigation (stubs) ---
+  get isAtFrameEnd(): boolean {
+    return this.flatSteps[this._globalStepIndex].isFrameEnd === true;
+  }
+
+  // --- Navigation ---
 
   stepForward(): void {
-    // Stub
-    throw new Error("stepForward() not yet implemented");
+    if (this._globalStepIndex < this.flatSteps.length - 1) {
+      this._globalStepIndex++;
+    }
   }
 
   stepBackward(): void {
-    // Stub
-    throw new Error("stepBackward() not yet implemented");
+    if (this._globalStepIndex > 0) {
+      this._globalStepIndex--;
+    }
   }
 
   stepOver(): void {
-    // Stub
-    throw new Error("stepOver() not yet implemented");
+    // TODO: implement properly with child frame skipping
+    this.stepForward();
   }
 
   stepOut(): void {
-    // Stub
-    throw new Error("stepOut() not yet implemented");
+    // TODO: implement properly with parent frame return
+    this.stepForward();
   }
 
-  jumpTo(_globalIndex: number): void {
-    // Stub
-    throw new Error("jumpTo() not yet implemented");
+  jumpTo(globalIndex: number): void {
+    this._globalStepIndex = Math.max(
+      0,
+      Math.min(globalIndex, this.flatSteps.length - 1)
+    );
   }
 
   jumpToStart(): void {
-    // Stub
-    throw new Error("jumpToStart() not yet implemented");
+    this._globalStepIndex = 0;
   }
 
   jumpToEnd(): void {
-    // Stub
-    throw new Error("jumpToEnd() not yet implemented");
+    this._globalStepIndex = this.flatSteps.length - 1;
   }
 
   // --- Breakpoints (stubs) ---
 
   addBreakpoint(_condition: BreakpointCondition): Breakpoint {
-    // Stub
     throw new Error("addBreakpoint() not yet implemented");
   }
 
   removeBreakpoint(_id: string): void {
-    // Stub
-    throw new Error("removeBreakpoint() not yet implemented");
+    // no-op for now
   }
 
   getBreakpoints(): Breakpoint[] {
-    // Stub
     return [];
   }
 
   continueForward(): boolean {
-    // Stub
-    throw new Error("continueForward() not yet implemented");
+    // TODO: implement with breakpoint matching
+    return false;
   }
 
   continueBackward(): boolean {
-    // Stub
-    throw new Error("continueBackward() not yet implemented");
+    // TODO: implement with breakpoint matching
+    return false;
   }
 
   // --- Call stack ---
 
   getCallStack(): Frame[] {
-    // Stub
-    throw new Error("getCallStack() not yet implemented");
+    return this.flatSteps[this._globalStepIndex].callStack;
   }
 }
 
@@ -111,21 +116,24 @@ export class DebugSession {
 function flattenSteps(root: Frame): FlatStep[] {
   const result: FlatStep[] = [];
 
-  function visit(frame: Frame): void {
+  function visit(frame: Frame, parentStack: Frame[]): void {
+    const callStack = [...parentStack, frame];
     let childIdx = 0;
     for (let i = 0; i < frame.steps.length; i++) {
-      result.push({ frame, stepIndex: i });
+      result.push({ frame, stepIndex: i, callStack });
       // If a child frame was spawned at this step, recurse into it
       while (
         childIdx < frame.children.length &&
         frame.children[childIdx].stepIndex === i
       ) {
-        visit(frame.children[childIdx].frame);
+        visit(frame.children[childIdx].frame, callStack);
         childIdx++;
       }
     }
+    // Add a virtual "frame end" step to show return data
+    result.push({ frame, stepIndex: -1, callStack, isFrameEnd: true });
   }
 
-  visit(root);
+  visit(root, []);
   return result;
 }

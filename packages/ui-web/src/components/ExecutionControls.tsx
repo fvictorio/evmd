@@ -15,16 +15,13 @@ export function ExecutionControls({
       <button onClick={controller.stepForward} disabled={disabled}>
         Step Forward
       </button>
-      <button onClick={controller.stepOver} disabled={disabled}>
+      <button onClick={controller.stepOver} disabled={true} title="Not yet implemented">
         Step Over
       </button>
-      <button onClick={controller.stepOut} disabled={disabled}>
+      <button onClick={controller.stepOut} disabled={true} title="Not yet implemented">
         Step Out
       </button>
-      <button onClick={controller.continueBackward} disabled={disabled}>
-        Continue Back
-      </button>
-      <button onClick={controller.continueForward} disabled={disabled}>
+      <button onClick={controller.continueForward} disabled={true} title="Requires breakpoints">
         Continue
       </button>
       <button onClick={controller.jumpToStart} disabled={disabled}>

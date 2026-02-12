@@ -3,6 +3,16 @@ import type { DebugSession } from "@evmd/core";
 export function StackView({ session }: { session: DebugSession }) {
   const step = session.currentStep;
 
+  if (!step) {
+    // Frame end - show final state
+    return (
+      <div className="evmd-panel evmd-stack">
+        <h3>Stack</h3>
+        <div className="evmd-empty">frame ended</div>
+      </div>
+    );
+  }
+
   return (
     <div className="evmd-panel evmd-stack">
       <h3>Stack</h3>
@@ -14,7 +24,7 @@ export function StackView({ session }: { session: DebugSession }) {
             {step.stack.map((item, i) => (
               <tr key={i}>
                 <td className="evmd-stack-index">{i}</td>
-                <td className="evmd-stack-value">{item}</td>
+                <td className="evmd-stack-value" title={item}>{item}</td>
               </tr>
             ))}
           </tbody>

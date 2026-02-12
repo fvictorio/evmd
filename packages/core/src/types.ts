@@ -34,7 +34,9 @@ export interface Frame {
     | "ROOT";
   /** Address of the code being executed. */
   codeAddress: string;
-  /** The input data (calldata or initcode). */
+  /** The bytecode being executed in this frame. */
+  code: string;
+  /** The input data (calldata for calls, initcode for creates). */
   input: string;
   /** The value sent with the call (in wei). */
   value: bigint;
@@ -134,8 +136,12 @@ export interface OpcodeInfo {
 export interface FlatStep {
   /** Reference to the frame this step belongs to. */
   frame: Frame;
-  /** Index of this step within its frame. */
+  /** Index of this step within its frame (-1 for frame end). */
   stepIndex: number;
+  /** The call stack at this step (from root to current frame, inclusive). */
+  callStack: Frame[];
+  /** True if this is a virtual "frame end" step showing the return. */
+  isFrameEnd?: boolean;
 }
 
 export interface BreakpointCondition {

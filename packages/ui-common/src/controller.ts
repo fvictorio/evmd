@@ -6,7 +6,8 @@ export type PanelName =
   | "storage"
   | "transientStorage"
   | "callStack"
-  | "bytecode";
+  | "bytecode"
+  | "returnData";
 
 export interface PanelVisibility {
   stack: boolean;
@@ -15,6 +16,7 @@ export interface PanelVisibility {
   transientStorage: boolean;
   callStack: boolean;
   bytecode: boolean;
+  returnData: boolean;
 }
 
 export interface DebuggerController {

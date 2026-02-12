@@ -1,7 +1,18 @@
 import type { DebugSession } from "@evmd/core";
 
 export function StorageView({ session }: { session: DebugSession }) {
-  const changes = session.currentStep.storageChanges;
+  const step = session.currentStep;
+
+  if (!step) {
+    return (
+      <div className="evmd-panel evmd-storage">
+        <h3>Storage</h3>
+        <div className="evmd-empty">frame ended</div>
+      </div>
+    );
+  }
+
+  const changes = step.storageChanges;
 
   return (
     <div className="evmd-panel evmd-storage">

@@ -14,7 +14,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@evmd/core": "workspace:*"
+    "@evmd/core": "workspace:*",
+    "@ethereumjs/evm": "^10.0.0",
+    "@ethereumjs/util": "^10.0.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

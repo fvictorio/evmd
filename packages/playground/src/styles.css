@@ -107,6 +107,16 @@ select {
   border: 1px solid #333;
   border-radius: 4px;
   padding: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.evmd-bytecode-view {
+  min-width: 320px;
+}
+
+.evmd-stack {
+  min-width: 320px;
 }
 
 .evmd-panel h3 {
@@ -131,15 +141,170 @@ select {
 .evmd-stack-index {
   color: #666;
   width: 30px;
+  flex-shrink: 0;
+}
+
+.evmd-stack-value {
+  word-break: break-all;
+  font-size: 0.75rem;
+}
+
+.evmd-stack table {
+  table-layout: fixed;
 }
 
 .evmd-memory-offset {
   color: #666;
   width: 60px;
+  flex-shrink: 0;
+}
+
+.evmd-memory table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.evmd-memory-value {
+  word-break: break-all;
+  font-size: 0.7rem;
 }
 
 .evmd-empty {
   color: #555;
   font-style: italic;
   font-size: 0.8rem;
+}
+
+.evmd-bytecode-listing {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+}
+
+.evmd-bytecode-line {
+  display: flex;
+  gap: 8px;
+  padding: 1px 0;
+  white-space: nowrap;
+}
+
+.evmd-bytecode-current {
+  background: #2a4a6e;
+  border-radius: 2px;
+}
+
+.evmd-bytecode-arrow {
+  color: #ffcc00;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.evmd-bytecode-pc {
+  color: #666;
+  width: 36px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.evmd-bytecode-mnemonic {
+  color: #a0a0ff;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.evmd-bytecode-operand {
+  color: #80d080;
+}
+
+.evmd-callstack-list {
+  font-size: 0.8rem;
+}
+
+.evmd-callstack-frame {
+  display: flex;
+  gap: 8px;
+  padding: 2px 4px;
+}
+
+.evmd-callstack-current {
+  background: #2a4a6e;
+  border-radius: 2px;
+}
+
+.evmd-callstack-type {
+  color: #a0a0ff;
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.evmd-callstack-address {
+  color: #888;
+}
+
+.evmd-frame-end-label {
+  color: #ffcc00;
+}
+
+.evmd-return-data {
+  font-size: 0.8rem;
+}
+
+.evmd-return-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.evmd-exit-reason {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.evmd-exit-success {
+  background: #1a4d2e;
+  color: #4ade80;
+}
+
+.evmd-exit-revert {
+  background: #4d1a1a;
+  color: #f87171;
+}
+
+.evmd-exit-invalid,
+.evmd-exit-outOfGas,
+.evmd-exit-stackUnderflow,
+.evmd-exit-stackOverflow,
+.evmd-exit-invalidJump,
+.evmd-exit-writeProtection {
+  background: #4d3a1a;
+  color: #fbbf24;
+}
+
+.evmd-deployed-address {
+  color: #80d080;
+  font-size: 0.75rem;
+}
+
+.evmd-return-data-content {
+  background: #0d1626;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.evmd-hex-data {
+  word-break: break-all;
+  color: #80d080;
+  font-size: 0.75rem;
+}
+
+.evmd-gas-used {
+  color: #888;
+  font-size: 0.75rem;
 }
