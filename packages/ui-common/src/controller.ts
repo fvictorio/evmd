@@ -39,8 +39,8 @@ export interface DebuggerController {
   visiblePanels: PanelVisibility;
   togglePanel(panel: PanelName): void;
 
-  inputMode: "hex" | "mnemonic";
-  setInputMode(mode: "hex" | "mnemonic"): void;
+  inputMode: "bytecode" | "mnemonic";
+  setInputMode(mode: "bytecode" | "mnemonic"): void;
 
   source: string;
   setSource(source: string): void;

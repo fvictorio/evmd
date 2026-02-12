@@ -12,11 +12,13 @@ export function BytecodeInput({
           <select
             value={controller.inputMode}
             onChange={(e) =>
-              controller.setInputMode(e.target.value as "hex" | "mnemonic")
+              controller.setInputMode(
+                e.target.value as "bytecode" | "mnemonic"
+              )
             }
           >
             <option value="mnemonic">Mnemonic</option>
-            <option value="hex">Hex</option>
+            <option value="bytecode">Bytecode</option>
           </select>
         </label>
         <button onClick={() => controller.execute()}>Run</button>

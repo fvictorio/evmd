@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { DebugSession } from "@evmd/core";
+import { useState, useCallback, useMemo, useRef } from "react";
+import { DebugSession, assemble, disassemble } from "@evmd/core";
 import type { Breakpoint, BreakpointCondition } from "@evmd/core";
 import type { EvmEngine } from "@evmd/engine";
 import type {
@@ -22,26 +22,75 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
   const [, forceUpdate] = useState(0);
   const [breakpoints, setBreakpoints] = useState<Breakpoint[]>([]);
   const [visiblePanels, setVisiblePanels] = useState(defaultPanelVisibility);
-  const [inputMode, setInputMode] = useState<"hex" | "mnemonic">("mnemonic");
-  const [source, setSource] = useState("");
+  const [inputMode, setInputModeRaw] = useState<"bytecode" | "mnemonic">(
+    "mnemonic"
+  );
+
+  // Dual-source state: each view has its own source text
+  const [mnemonicSource, setMnemonicSource] = useState("");
+  const [bytecodeSource, setBytecodeSource] = useState("");
+  // Track what the current mnemonic last assembled to, so we can detect
+  // whether bytecode was edited and decide whether to restore comments.
+  const lastAssembledBytecodeRef = useRef<string | null>(null);
 
   const rerender = useCallback(() => forceUpdate((n) => n + 1), []);
 
+  const source = inputMode === "mnemonic" ? mnemonicSource : bytecodeSource;
+
+  const setSource = useCallback(
+    (s: string) => {
+      if (inputMode === "mnemonic") {
+        setMnemonicSource(s);
+      } else {
+        setBytecodeSource(s);
+      }
+    },
+    [inputMode]
+  );
+
+  const setInputMode = useCallback(
+    (newMode: "bytecode" | "mnemonic") => {
+      if (newMode === inputMode) return;
+
+      if (newMode === "bytecode") {
+        // mnemonic → bytecode: try to assemble
+        try {
+          const result = assemble(mnemonicSource);
+          setBytecodeSource(result);
+          lastAssembledBytecodeRef.current = result;
+        } catch {
+          // Assembly failed: keep old bytecodeSource as-is
+        }
+      } else {
+        // bytecode → mnemonic: check if bytecode was edited
+        if (bytecodeSource === lastAssembledBytecodeRef.current) {
+          // Bytecode unchanged: restore mnemonic with comments
+          // (mnemonicSource already has the right value, do nothing)
+        } else {
+          // Bytecode was edited: disassemble into new mnemonic
+          try {
+            setMnemonicSource(disassemble(bytecodeSource));
+          } catch {
+            // Disassembly failed: keep old mnemonicSource as-is
+          }
+        }
+      }
+
+      setInputModeRaw(newMode);
+    },
+    [inputMode, mnemonicSource, bytecodeSource]
+  );
+
   const execute = useCallback(async () => {
-    const bytecode = source; // TODO: assemble if mnemonic mode
+    let bytecode: string;
+    if (inputMode === "mnemonic") {
+      bytecode = assemble(mnemonicSource);
+    } else {
+      bytecode = bytecodeSource;
+    }
     const trace = await engine.execute({ bytecode, mode: "call" });
     setSession(new DebugSession(trace));
-  }, [engine, source]);
-
-  const wrap = useCallback(
-    (fn: () => void) => {
-      return () => {
-        fn();
-        rerender();
-      };
-    },
-    [rerender]
-  );
+  }, [engine, inputMode, mnemonicSource, bytecodeSource]);
 
   const stepForward = useCallback(() => {
     session?.stepForward();
@@ -94,7 +143,7 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
   const addBreakpoint = useCallback(
     (condition: BreakpointCondition) => {
       if (!session) return;
-      const bp = session.addBreakpoint(condition);
+      session.addBreakpoint(condition);
       setBreakpoints(session.getBreakpoints());
     },
     [session]
