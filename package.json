@@ -5,7 +5,7 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "dev": "pnpm --filter playground dev",
-    "deploy": "pnpm build && pnpm --filter playground deploy"
+    "deploy": "pnpm build && pnpm --filter playground run deploy"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
