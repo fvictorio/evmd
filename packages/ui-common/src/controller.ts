@@ -26,6 +26,8 @@ export interface DebuggerController {
   stepBackward(): void;
   stepOver(): void;
   stepOut(): void;
+  canStepOver: boolean;
+  canStepOut: boolean;
   jumpTo(index: number): void;
   jumpToStart(): void;
   jumpToEnd(): void;

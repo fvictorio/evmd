@@ -15,10 +15,18 @@ export function ExecutionControls({
       <button onClick={controller.stepForward} disabled={disabled}>
         Step Forward
       </button>
-      <button onClick={controller.stepOver} disabled={true} title="Not yet implemented">
+      <button
+        onClick={controller.stepOver}
+        disabled={disabled}
+        title={controller.canStepOver ? "Skip over child frame" : "Step forward"}
+      >
         Step Over
       </button>
-      <button onClick={controller.stepOut} disabled={true} title="Not yet implemented">
+      <button
+        onClick={controller.stepOut}
+        disabled={disabled || !controller.canStepOut}
+        title={controller.canStepOut ? "Continue until returning to parent frame" : "Only available inside a child frame"}
+      >
         Step Out
       </button>
       <button onClick={controller.continueForward} disabled={true} title="Requires breakpoints">

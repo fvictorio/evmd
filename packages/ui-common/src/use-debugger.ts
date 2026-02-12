@@ -193,6 +193,8 @@ export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): De
     stepBackward,
     stepOver,
     stepOut,
+    canStepOver: session?.canStepOver() ?? false,
+    canStepOut: session?.canStepOut() ?? false,
     jumpTo,
     jumpToStart,
     jumpToEnd,

@@ -7,6 +7,16 @@ import type {
   BreakpointCondition,
 } from "./types.js";
 
+// Opcodes that create child frames
+const FRAME_CREATING_OPCODES = new Set([
+  0xf0, // CREATE
+  0xf1, // CALL
+  0xf2, // CALLCODE
+  0xf4, // DELEGATECALL
+  0xf5, // CREATE2
+  0xfa, // STATICCALL
+]);
+
 export class DebugSession {
   readonly trace: Trace;
   readonly flatSteps: FlatStep[];
@@ -56,14 +66,70 @@ export class DebugSession {
     }
   }
 
-  stepOver(): void {
-    // TODO: implement properly with child frame skipping
-    this.stepForward();
+  /**
+   * Check if step over would skip a child frame (i.e., current opcode creates a frame).
+   */
+  canStepOver(): boolean {
+    const currentStep = this.currentStep;
+    return currentStep !== null && FRAME_CREATING_OPCODES.has(currentStep.opcode);
   }
 
+  /**
+   * Check if step out is available (i.e., not at root frame).
+   */
+  canStepOut(): boolean {
+    return this.getCallStack().length > 1;
+  }
+
+  /**
+   * Step over: if the current opcode creates a child frame, skip over it.
+   * Otherwise, just step forward.
+   */
+  stepOver(): void {
+    const currentStep = this.currentStep;
+    if (!currentStep || !FRAME_CREATING_OPCODES.has(currentStep.opcode)) {
+      // Not a frame-creating opcode, just step forward
+      this.stepForward();
+      return;
+    }
+
+    // Skip over the child frame by advancing until we're back in the same frame
+    // at a later step index (or at frame end)
+    const currentFrame = this.currentFrame;
+    const currentStepIdx = this.currentStepIndex;
+
+    while (this._globalStepIndex < this.flatSteps.length - 1) {
+      this._globalStepIndex++;
+      const flat = this.flatSteps[this._globalStepIndex];
+      // Stop when we're back in the same frame at a different step (or frame end)
+      if (flat.frame === currentFrame && flat.stepIndex !== currentStepIdx) {
+        break;
+      }
+    }
+  }
+
+  /**
+   * Step out: continue until we exit the current frame (return to parent).
+   * Only works if not in the root frame.
+   */
   stepOut(): void {
-    // TODO: implement properly with parent frame return
-    this.stepForward();
+    const currentCallStack = this.getCallStack();
+    if (currentCallStack.length <= 1) {
+      // Already at root frame, can't step out - just go to end
+      this.jumpToEnd();
+      return;
+    }
+
+    const currentDepth = currentCallStack.length;
+
+    // Advance until we're at a shallower depth (exited current frame)
+    while (this._globalStepIndex < this.flatSteps.length - 1) {
+      this._globalStepIndex++;
+      const flat = this.flatSteps[this._globalStepIndex];
+      if (flat.callStack.length < currentDepth) {
+        break;
+      }
+    }
   }
 
   jumpTo(globalIndex: number): void {
