@@ -18,7 +18,11 @@ const defaultPanelVisibility: PanelVisibility = {
   returnData: true,
 };
 
-export function useDebugger(engine: EvmEngine): DebuggerController {
+export interface UseDebuggerOptions {
+  initialSource?: string;
+}
+
+export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): DebuggerController {
   const [session, setSession] = useState<DebugSession | null>(null);
   const [, forceUpdate] = useState(0);
   const [breakpoints, setBreakpoints] = useState<Breakpoint[]>([]);
@@ -29,7 +33,7 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
   const [error, setError] = useState<string | null>(null);
 
   // Dual-source state: each view has its own source text
-  const [mnemonicSource, setMnemonicSource] = useState("");
+  const [mnemonicSource, setMnemonicSource] = useState(options?.initialSource ?? "");
   const [bytecodeSource, setBytecodeSource] = useState("");
   // Track what the current mnemonic last assembled to, so we can detect
   // whether bytecode was edited and decide whether to restore comments.

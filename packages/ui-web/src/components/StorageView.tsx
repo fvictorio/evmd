@@ -4,29 +4,45 @@ export function StorageView({ session }: { session: DebugSession }) {
   const step = session.currentStep;
   const isFrameEnd = session.isAtFrameEnd;
 
-  // Storage shows changes per step, so at frame end there are no changes
-  const changes = step?.storageChanges ?? [];
+  // At frame end, show the last step's storage state plus any changes from that step
+  const frame = session.currentFrame;
+  const displayStep = step ?? (frame.steps.length > 0 ? frame.steps[frame.steps.length - 1] : null);
+
+  // Build the storage state
+  let storage: Record<string, string> = { ...(displayStep?.storage ?? {}) };
+
+  // At frame end, apply the last step's storage changes (since storage shows state BEFORE execution)
+  if (isFrameEnd && displayStep?.storageChanges) {
+    for (const change of displayStep.storageChanges) {
+      storage[change.slot] = change.after;
+    }
+  }
+
+  const slots = Object.keys(storage).sort((a, b) => {
+    // Sort by numeric value of slot
+    const aVal = BigInt(a);
+    const bVal = BigInt(b);
+    return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+  });
 
   return (
     <div className="evmd-panel evmd-storage">
       <h3>Storage</h3>
-      {changes.length === 0 ? (
-        <div className="evmd-empty">no changes{isFrameEnd ? "" : " at this step"}</div>
+      {slots.length === 0 ? (
+        <div className="evmd-empty">no storage touched</div>
       ) : (
         <table>
           <thead>
             <tr>
               <th>Slot</th>
-              <th>Before</th>
-              <th>After</th>
+              <th>Value</th>
             </tr>
           </thead>
           <tbody>
-            {changes.map((c, i) => (
-              <tr key={i}>
-                <td>{c.slot}</td>
-                <td>{c.before}</td>
-                <td>{c.after}</td>
+            {slots.map((slot) => (
+              <tr key={slot}>
+                <td>{slot}</td>
+                <td>{storage[slot]}</td>
               </tr>
             ))}
           </tbody>

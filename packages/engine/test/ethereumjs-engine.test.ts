@@ -96,6 +96,70 @@ describe("EthereumjsEngine.execute", () => {
     expect(stopStep.memory.current).toContain("42");
   });
 
+  it("captures storage changes on SSTORE", async () => {
+    const engine = new EthereumjsEngine();
+    // PUSH1 0x42, PUSH1 0x01, SSTORE, STOP
+    // Stores value 0x42 at slot 0x01
+    // Use deploy mode since runCode doesn't have proper state for SSTORE
+    const trace = await engine.execute({
+      bytecode: "0x6042600155" + "00",
+      mode: "deploy",
+    });
+
+    // Find the SSTORE step
+    const sstoreStep = trace.root.steps.find((s) => s.mnemonic === "SSTORE");
+    expect(sstoreStep).toBeDefined();
+
+    // The SSTORE step should have storageChanges populated
+    expect(sstoreStep!.storageChanges).toHaveLength(1);
+    expect(sstoreStep!.storageChanges[0].slot).toBe("0x1");
+    expect(sstoreStep!.storageChanges[0].before).toBe("0x0");
+    expect(sstoreStep!.storageChanges[0].after).toBe("0x42");
+  });
+
+  it("accumulates storage state across multiple SSTOREs", async () => {
+    const engine = new EthereumjsEngine();
+    // PUSH1 1, PUSH1 0, SSTORE  -> slot 0 = 1
+    // PUSH1 2, PUSH1 1, SSTORE  -> slot 1 = 2
+    // STOP
+    const trace = await engine.execute({
+      bytecode: "0x600160005560026001555f00",
+      mode: "deploy",
+    });
+
+    // Find the STOP step
+    const stopStep = trace.root.steps.find((s) => s.mnemonic === "STOP");
+    expect(stopStep).toBeDefined();
+
+    // At STOP, accumulated storage should show both slots
+    expect(stopStep!.storage).toBeDefined();
+    expect(stopStep!.storage!["0x0"]).toBe("0x1");
+    expect(stopStep!.storage!["0x1"]).toBe("0x2");
+  });
+
+  it("storage snapshot shows state BEFORE current opcode executes", async () => {
+    const engine = new EthereumjsEngine();
+    // PUSH1 0x42, PUSH1 0x01, SSTORE, STOP
+    const trace = await engine.execute({
+      bytecode: "0x6042600155" + "00",
+      mode: "deploy",
+    });
+
+    const steps = trace.root.steps;
+    // Steps: PUSH1, PUSH1, SSTORE, STOP
+
+    // SSTORE step should NOT show storage yet (it hasn't executed)
+    const sstoreStep = steps.find((s) => s.mnemonic === "SSTORE");
+    expect(sstoreStep).toBeDefined();
+    expect(sstoreStep!.storage).toBeUndefined();
+
+    // STOP step SHOULD show the storage (SSTORE has executed)
+    const stopStep = steps.find((s) => s.mnemonic === "STOP");
+    expect(stopStep).toBeDefined();
+    expect(stopStep!.storage).toBeDefined();
+    expect(stopStep!.storage!["0x1"]).toBe("0x42");
+  });
+
   it("resetState creates a fresh EVM", async () => {
     const engine = new EthereumjsEngine();
 

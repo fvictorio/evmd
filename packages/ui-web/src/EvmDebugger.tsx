@@ -10,8 +10,13 @@ import { CallStackView } from "./components/CallStackView.js";
 import { ReturnDataView } from "./components/ReturnDataView.js";
 import { ErrorBanner } from "./components/ErrorBanner.js";
 
-export function EvmDebugger({ engine }: { engine: EvmEngine }) {
-  const controller = useDebugger(engine);
+export interface EvmDebuggerProps {
+  engine: EvmEngine;
+  initialSource?: string;
+}
+
+export function EvmDebugger({ engine, initialSource }: EvmDebuggerProps) {
+  const controller = useDebugger(engine, { initialSource });
 
   return (
     <div className="evmd">

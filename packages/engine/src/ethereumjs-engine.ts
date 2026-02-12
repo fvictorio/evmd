@@ -49,11 +49,15 @@ export class EthereumjsEngine implements EvmEngine {
     let frameIdCounter = 0;
     const frameStack: Frame[] = [];
     let rootFrame: Frame | null = null;
+    // Track accumulated storage state per frame (keyed by frame id)
+    const frameStorageMap = new Map<string, Record<string, string>>();
 
-    const stepHandler = (data: InterpreterStep) => {
+    const stepHandler = async (data: InterpreterStep, resolve?: () => void) => {
       const currentFrame = frameStack[frameStack.length - 1];
-      if (!currentFrame) return;
-
+      if (!currentFrame) {
+        resolve?.();
+        return;
+      }
 
       // data.stack is a live reference — must copy
       const stack = [...data.stack]
@@ -62,6 +66,44 @@ export class EthereumjsEngine implements EvmEngine {
 
       const memHex =
         data.memory.length > 0 ? bytesToHex(data.memory) : "0x";
+
+      // Get or create accumulated storage for this frame
+      let frameStorage = frameStorageMap.get(currentFrame.id);
+      if (!frameStorage) {
+        frameStorage = {};
+        frameStorageMap.set(currentFrame.id, frameStorage);
+      }
+
+      // Copy current accumulated storage state for this step (BEFORE this opcode executes)
+      const storage = Object.keys(frameStorage).length > 0
+        ? { ...frameStorage }
+        : undefined;
+
+      // Capture storage changes for SSTORE opcode (0x55)
+      const storageChanges: Step["storageChanges"] = [];
+      if (data.opcode.code === 0x55 && stack.length >= 2) {
+        const slot = stack[0]; // slot is at top of stack
+        const newValue = stack[1]; // value is second from top
+        try {
+          const address = createAddressFromString(currentFrame.codeAddress);
+          const slotBytes = hexToBytes(
+            ("0x" + BigInt(slot).toString(16).padStart(64, "0")) as `0x${string}`
+          );
+          const currentValue = await evm.stateManager.getStorage(address, slotBytes);
+          const before =
+            currentValue.length > 0 ? bytesToHex(currentValue) : "0x0";
+          storageChanges.push({
+            slot,
+            before,
+            after: newValue,
+          });
+          // Update accumulated storage state AFTER snapshotting for this step
+          // so the next step will see the updated value
+          frameStorage[slot] = newValue;
+        } catch {
+          // Ignore errors reading storage
+        }
+      }
 
       currentFrame.steps.push({
         pc: data.pc,
@@ -72,10 +114,13 @@ export class EthereumjsEngine implements EvmEngine {
           BigInt(data.opcode.fee) + (data.opcode.dynamicFee ?? 0n),
         stack,
         memory: { current: memHex, expandedSize: null },
-        storageChanges: [],
+        storageChanges,
         transientStorageChanges: [],
         depth: data.depth,
+        storage,
       });
+
+      resolve?.();
     };
 
     const beforeMessageHandler = (data: Message, resolve?: (result?: unknown) => void) => {

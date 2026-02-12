@@ -101,6 +101,8 @@ export interface Step {
   transientStorageChanges: StorageChange[];
   /** The depth of this step (for indentation in the UI, starts at 0 for root). */
   depth: number;
+  /** Accumulated storage state (all touched slots) up to and including this step. */
+  storage?: Record<string, string>;
 }
 
 export interface MemoryState {
