@@ -161,25 +161,45 @@ select {
   table-layout: fixed;
 }
 
-.evmd-memory-offset {
-  color: #666;
-  width: 60px;
-  flex-shrink: 0;
-}
-
 .evmd-memory {
   grid-column: 1 / -1; /* Span full width */
 }
 
-.evmd-memory table {
-  table-layout: fixed;
-  width: 100%;
+.evmd-memory-grid {
+  font-size: 0.75rem;
 }
 
-.evmd-memory-value {
-  word-break: break-all;
-  font-size: 0.75rem;
-  font-family: inherit;
+.evmd-memory-row {
+  display: flex;
+  line-height: 1.4;
+}
+
+.evmd-memory-offset {
+  color: #666;
+  width: 4.5em;
+  flex-shrink: 0;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.evmd-memory-header-row {
+  margin-bottom: 2px;
+}
+
+.evmd-memory-header {
+  color: #666;
+  width: 2ch;
+  text-align: center;
+  cursor: default;
+}
+
+.evmd-memory-byte {
+  width: 2ch;
+  text-align: center;
+}
+
+.evmd-memory-col-hover {
+  background: #2a4a6e;
 }
 
 .evmd-empty {

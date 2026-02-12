@@ -16,17 +16,10 @@ export function CallStackView({ session }: { session: DebugSession }) {
               className={`evmd-callstack-frame${index === 0 ? " evmd-callstack-current" : ""}`}
             >
               <span className="evmd-callstack-type">{frame.type}</span>
-              <span className="evmd-callstack-address">
-                {formatAddress(frame.codeAddress)}
-              </span>
+              <span className="evmd-callstack-address">{frame.codeAddress}</span>
             </div>
           ))}
       </div>
     </div>
   );
-}
-
-function formatAddress(address: string): string {
-  if (address.length <= 12) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

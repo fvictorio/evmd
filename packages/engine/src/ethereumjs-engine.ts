@@ -201,6 +201,10 @@ export class EthereumjsEngine implements EvmEngine {
           gasUsed: result.execResult.executionGasUsed,
           deployedAddress: result.createdAddress?.toString(),
         };
+        // Update codeAddress for CREATE/CREATE2 frames with the actual deployed address
+        if (result.createdAddress && (finishedFrame.type === "CREATE" || finishedFrame.type === "CREATE2" || finishedFrame.type === "ROOT")) {
+          finishedFrame.codeAddress = result.createdAddress.toString();
+        }
       }
       resolve?.();
     };
