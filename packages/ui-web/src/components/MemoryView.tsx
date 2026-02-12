@@ -3,16 +3,20 @@ import type { DebugSession } from "@evmd/core";
 export function MemoryView({ session }: { session: DebugSession }) {
   const step = session.currentStep;
 
-  if (!step) {
+  // At frame end, show the last step's memory state
+  const frame = session.currentFrame;
+  const displayStep = step ?? (frame.steps.length > 0 ? frame.steps[frame.steps.length - 1] : null);
+
+  if (!displayStep) {
     return (
       <div className="evmd-panel evmd-memory">
         <h3>Memory</h3>
-        <div className="evmd-empty">frame ended</div>
+        <div className="evmd-empty">empty</div>
       </div>
     );
   }
 
-  const memory = step.memory;
+  const memory = displayStep.memory;
   const hex = memory.current.startsWith("0x")
     ? memory.current.slice(2)
     : memory.current;

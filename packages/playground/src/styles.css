@@ -149,6 +149,14 @@ select {
   font-size: 0.75rem;
 }
 
+.evmd-stack-input-name {
+  color: #888;
+  font-size: 0.7rem;
+  font-style: italic;
+  padding-left: 8px;
+  white-space: nowrap;
+}
+
 .evmd-stack table {
   table-layout: fixed;
 }
@@ -159,6 +167,10 @@ select {
   flex-shrink: 0;
 }
 
+.evmd-memory {
+  grid-column: 1 / -1; /* Span full width */
+}
+
 .evmd-memory table {
   table-layout: fixed;
   width: 100%;
@@ -166,7 +178,8 @@ select {
 
 .evmd-memory-value {
   word-break: break-all;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-family: inherit;
 }
 
 .evmd-empty {
@@ -307,4 +320,37 @@ select {
 .evmd-gas-used {
   color: #888;
   font-size: 0.75rem;
+}
+
+/* Error banner */
+.evmd-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #4d1a1a;
+  border: 1px solid #7a2a2a;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #f87171;
+  font-size: 0.85rem;
+}
+
+.evmd-error-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.evmd-error-dismiss {
+  background: transparent;
+  border: none;
+  color: #f87171;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  margin-left: 8px;
+  line-height: 1;
+}
+
+.evmd-error-dismiss:hover {
+  color: #fca5a5;
 }

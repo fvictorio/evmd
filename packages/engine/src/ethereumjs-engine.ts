@@ -32,17 +32,6 @@ function mapExceptionToReason(error: unknown): FrameExitReason {
   return "invalid";
 }
 
-function getCallType(
-  isStatic: boolean,
-  delegatecall: boolean,
-  isCreate: boolean
-): Frame["type"] {
-  if (isCreate) return "CREATE";
-  if (isStatic) return "STATICCALL";
-  if (delegatecall) return "DELEGATECALL";
-  return "CALL";
-}
-
 export class EthereumjsEngine implements EvmEngine {
   private evmPromise: Promise<EVM> | null = null;
 
@@ -92,13 +81,11 @@ export class EthereumjsEngine implements EvmEngine {
     const beforeMessageHandler = (data: Message, resolve?: (result?: unknown) => void) => {
       const isRoot = frameStack.length === 0;
       const parentFrame = frameStack[frameStack.length - 1];
-      const isCreate = data.isCreate ?? false;
 
       // Determine the code being executed in this frame.
       // Priority:
       // 1. data.code (if it's a Uint8Array) - this is the code for CALL operations
       // 2. data.data (if it has content) - this is the initcode for CREATE or the code for deploy mode
-      // Note: data.isCreate is unreliable (often false even for CREATEs), so we don't depend on it
       let code = "0x";
       if (data.code && data.code instanceof Uint8Array) {
         code = bytesToHex(data.code);
@@ -106,15 +93,25 @@ export class EthereumjsEngine implements EvmEngine {
         code = bytesToHex(data.data);
       }
 
+      // Determine frame type by looking at the parent's opcode that spawned this frame
+      // This is more reliable than data.isCreate which is often incorrect
+      let frameType: Frame["type"] = "CALL";
+      if (isRoot) {
+        frameType = "ROOT";
+      } else if (parentFrame && parentFrame.steps.length > 0) {
+        const parentStep = parentFrame.steps[parentFrame.steps.length - 1];
+        const opcode = parentStep.mnemonic;
+        if (opcode === "CREATE") frameType = "CREATE";
+        else if (opcode === "CREATE2") frameType = "CREATE2";
+        else if (opcode === "STATICCALL") frameType = "STATICCALL";
+        else if (opcode === "DELEGATECALL") frameType = "DELEGATECALL";
+        else if (opcode === "CALLCODE") frameType = "CALLCODE";
+        else frameType = "CALL";
+      }
+
       const newFrame: Frame = {
         id: isRoot ? "root" : `frame-${frameIdCounter++}`,
-        type: isRoot
-          ? "ROOT"
-          : getCallType(
-              data.isStatic,
-              data.delegatecall,
-              isCreate
-            ),
+        type: frameType,
         codeAddress: data.to?.toString() ?? "0x0000000000000000000000000000000000000000",
         code,
         input: data.data ? bytesToHex(data.data) : "0x",

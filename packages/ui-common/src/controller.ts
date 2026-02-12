@@ -48,4 +48,9 @@ export interface DebuggerController {
   setSource(source: string): void;
 
   execute(): Promise<void>;
+
+  /** Current error message (e.g., assembly error). Null if no error. */
+  error: string | null;
+  /** Dismiss the current error */
+  dismissError(): void;
 }

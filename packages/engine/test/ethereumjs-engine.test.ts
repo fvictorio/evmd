@@ -151,12 +151,11 @@ describe("Engine → DebugSession integration", () => {
     expect(frames[0].type).toBe("ROOT");
     expect(frames[0].code).toBe(bytecode);
 
-    // Frame 1: CREATE child
-    // Note: type is "CALL" because data.isCreate is unreliable in ethereumjs
-    // The code is correctly set to the initcode via data.data fallback
+    // Frame 1: CREATE child - type should be CREATE (detected from parent's opcode)
+    expect(frames[1].type).toBe("CREATE");
     expect(frames[1].code).toBe("0x625f5ff35f526003601df3"); // initcode ✓
 
-    // Frame 2: CALL child - THIS IS THE FAILING CASE
+    // Frame 2: CALL child
     // Currently code is "0x" (empty) because:
     // - data.code is not provided by ethereumjs for internal CALLs
     // - data.data is empty (it's calldata, not code)

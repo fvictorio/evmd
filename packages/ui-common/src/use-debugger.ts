@@ -26,6 +26,7 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
   const [inputMode, setInputModeRaw] = useState<"bytecode" | "mnemonic">(
     "mnemonic"
   );
+  const [error, setError] = useState<string | null>(null);
 
   // Dual-source state: each view has its own source text
   const [mnemonicSource, setMnemonicSource] = useState("");
@@ -59,20 +60,25 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
           const result = assemble(mnemonicSource);
           setBytecodeSource(result);
           lastAssembledBytecodeRef.current = result;
-        } catch {
-          // Assembly failed: keep old bytecodeSource as-is
+          setError(null); // Clear error on success
+        } catch (e) {
+          // Assembly failed: show error but still switch modes
+          setError(`Assembly error: ${e instanceof Error ? e.message : String(e)}`);
         }
       } else {
         // bytecode → mnemonic: check if bytecode was edited
         if (bytecodeSource === lastAssembledBytecodeRef.current) {
           // Bytecode unchanged: restore mnemonic with comments
           // (mnemonicSource already has the right value, do nothing)
+          setError(null);
         } else {
           // Bytecode was edited: disassemble into new mnemonic
           try {
             setMnemonicSource(disassemble(bytecodeSource));
-          } catch {
-            // Disassembly failed: keep old mnemonicSource as-is
+            setError(null);
+          } catch (e) {
+            // Disassembly failed: show error but still switch modes
+            setError(`Disassembly error: ${e instanceof Error ? e.message : String(e)}`);
           }
         }
       }
@@ -83,14 +89,19 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
   );
 
   const execute = useCallback(async () => {
-    let bytecode: string;
-    if (inputMode === "mnemonic") {
-      bytecode = assemble(mnemonicSource);
-    } else {
-      bytecode = bytecodeSource;
+    try {
+      let bytecode: string;
+      if (inputMode === "mnemonic") {
+        bytecode = assemble(mnemonicSource);
+      } else {
+        bytecode = bytecodeSource;
+      }
+      const trace = await engine.execute({ bytecode, mode: "deploy" });
+      setSession(new DebugSession(trace));
+      setError(null); // Clear error on successful execution
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
-    const trace = await engine.execute({ bytecode, mode: "deploy" });
-    setSession(new DebugSession(trace));
   }, [engine, inputMode, mnemonicSource, bytecodeSource]);
 
   const stepForward = useCallback(() => {
@@ -168,6 +179,10 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
     setVisiblePanels((prev) => ({ ...prev, [panel]: !prev[panel] }));
   }, []);
 
+  const dismissError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     session,
     stepForward,
@@ -190,5 +205,7 @@ export function useDebugger(engine: EvmEngine): DebuggerController {
     source,
     setSource,
     execute,
+    error,
+    dismissError,
   };
 }

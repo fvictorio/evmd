@@ -8,6 +8,7 @@ import { StorageView } from "./components/StorageView.js";
 import { BytecodeView } from "./components/BytecodeView.js";
 import { CallStackView } from "./components/CallStackView.js";
 import { ReturnDataView } from "./components/ReturnDataView.js";
+import { ErrorBanner } from "./components/ErrorBanner.js";
 
 export function EvmDebugger({ engine }: { engine: EvmEngine }) {
   const controller = useDebugger(engine);
@@ -15,6 +16,12 @@ export function EvmDebugger({ engine }: { engine: EvmEngine }) {
   return (
     <div className="evmd">
       <BytecodeInput controller={controller} />
+      {controller.error && (
+        <ErrorBanner
+          message={controller.error}
+          onDismiss={controller.dismissError}
+        />
+      )}
       <ExecutionControls controller={controller} />
       {controller.session && (
         <div className="evmd-panels">
