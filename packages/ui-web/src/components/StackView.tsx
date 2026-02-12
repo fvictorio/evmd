@@ -41,7 +41,7 @@ export function StackView({ session }: { session: DebugSession }) {
   const step = session.currentStep;
   const isFrameEnd = session.isAtFrameEnd;
 
-  // At frame end, show the last step's stack state
+  // At frame end, show the last step's post-execution stack state
   const frame = session.currentFrame;
   const displayStep = step ?? (frame.steps.length > 0 ? frame.steps[frame.steps.length - 1] : null);
 
@@ -54,6 +54,11 @@ export function StackView({ session }: { session: DebugSession }) {
     );
   }
 
+  // At frame end, use post-execution stack; otherwise use pre-execution stack
+  const displayStack = isFrameEnd && displayStep.stackAfter
+    ? displayStep.stackAfter
+    : displayStep.stack;
+
   // Get input names for the current opcode (only if not at frame end)
   const opcodeInfo = !isFrameEnd ? getOpcodeByCode(displayStep.opcode) : null;
   const inputNames = opcodeInfo?.inputNames ?? [];
@@ -62,12 +67,12 @@ export function StackView({ session }: { session: DebugSession }) {
   return (
     <div className="evmd-panel evmd-stack">
       <h3>Stack</h3>
-      {displayStep.stack.length === 0 ? (
+      {displayStack.length === 0 ? (
         <div className="evmd-empty">empty</div>
       ) : (
         <table>
           <tbody>
-            {displayStep.stack.map((item, i) => {
+            {displayStack.map((item, i) => {
               const annotation = !isFrameEnd ? getStackAnnotation(mnemonic, i, inputNames) : null;
               return (
                 <tr key={i}>

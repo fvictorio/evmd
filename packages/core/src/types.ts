@@ -93,8 +93,12 @@ export interface Step {
   gasCost: bigint;
   /** The full stack BEFORE this opcode executes. Top of stack is index 0. */
   stack: string[];
+  /** The full stack AFTER this opcode executes (for frame end display). */
+  stackAfter?: string[];
   /** Memory state. */
   memory: MemoryState;
+  /** Memory state AFTER this opcode executes (for frame end display). */
+  memoryAfter?: string;
   /** Storage changes caused by this step (if any). */
   storageChanges: StorageChange[];
   /** Transient storage changes caused by this step (if any). */

@@ -17,6 +17,37 @@ const DEFAULT_CALLER = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045";
 const DEFAULT_TO = "0x1000000000000000000000000000000000000001";
 const DEFAULT_GAS_LIMIT = 30_000_000n;
 
+// Terminal opcodes that end execution
+const TERMINAL_OPCODES = new Set([
+  0x00, // STOP
+  0xf3, // RETURN
+  0xfd, // REVERT
+  0xfe, // INVALID
+  0xff, // SELFDESTRUCT
+]);
+
+/**
+ * Append a STOP opcode to bytecode if it doesn't end with a terminal opcode.
+ * Returns the (possibly modified) bytecode and whether STOP was appended.
+ */
+function ensureTerminalOpcode(bytecode: string): { bytecode: string; appendedStop: boolean } {
+  const hex = bytecode.startsWith("0x") ? bytecode.slice(2) : bytecode;
+  if (hex.length < 2) {
+    return { bytecode: bytecode + "00", appendedStop: true };
+  }
+
+  // Get the last opcode - we need to skip over PUSH immediates
+  // This is a simplified check; we just look at the last byte
+  const lastByte = parseInt(hex.slice(-2), 16);
+
+  if (TERMINAL_OPCODES.has(lastByte)) {
+    return { bytecode, appendedStop: false };
+  }
+
+  // Append STOP (0x00)
+  return { bytecode: bytecode + "00", appendedStop: true };
+}
+
 function mapExceptionToReason(error: unknown): FrameExitReason {
   const msg = String(
     (error as { error?: string })?.error ??
@@ -66,6 +97,14 @@ export class EthereumjsEngine implements EvmEngine {
 
       const memHex =
         data.memory.length > 0 ? bytesToHex(data.memory) : "0x";
+
+      // Update the PREVIOUS step with post-execution state
+      // (current stack/memory is the result of previous step's execution)
+      if (currentFrame.steps.length > 0) {
+        const prevStep = currentFrame.steps[currentFrame.steps.length - 1];
+        prevStep.stackAfter = stack;
+        prevStep.memoryAfter = memHex;
+      }
 
       // Get or create accumulated storage for this frame
       let frameStorage = frameStorageMap.get(currentFrame.id);
@@ -205,6 +244,30 @@ export class EthereumjsEngine implements EvmEngine {
         if (result.createdAddress && (finishedFrame.type === "CREATE" || finishedFrame.type === "CREATE2" || finishedFrame.type === "ROOT")) {
           finishedFrame.codeAddress = result.createdAddress.toString();
         }
+        // Update the last step with post-execution state if not already set
+        if (finishedFrame.steps.length > 0) {
+          const lastStep = finishedFrame.steps[finishedFrame.steps.length - 1];
+          if (!lastStep.stackAfter) {
+            // For terminal opcodes, we can infer the final state
+            const opcode = lastStep.opcode;
+            if (opcode === 0x00 || opcode === 0xfe) {
+              // STOP or INVALID: stack/memory unchanged
+              lastStep.stackAfter = lastStep.stack;
+            } else if (opcode === 0xf3 || opcode === 0xfd) {
+              // RETURN or REVERT: pop 2 items
+              lastStep.stackAfter = lastStep.stack.slice(2);
+            } else if (opcode === 0xff) {
+              // SELFDESTRUCT: pop 1 item
+              lastStep.stackAfter = lastStep.stack.slice(1);
+            } else {
+              // Non-terminal opcode without stackAfter - shouldn't happen with STOP appending
+              lastStep.stackAfter = lastStep.stack;
+            }
+          }
+          if (!lastStep.memoryAfter) {
+            lastStep.memoryAfter = lastStep.memory.current;
+          }
+        }
       }
       resolve?.();
     };
@@ -219,13 +282,17 @@ export class EthereumjsEngine implements EvmEngine {
         params.from ?? DEFAULT_CALLER
       );
 
+      // Append STOP if bytecode doesn't end with a terminal opcode
+      // This ensures we get the final state from the synthetic STOP step
+      const { bytecode: execBytecode, appendedStop } = ensureTerminalOpcode(params.bytecode);
+
       let execResult;
       let createdAddress: string | undefined;
 
       if (params.mode === "deploy") {
         // Deploy: runCall with no `to` triggers CREATE semantics
         const result = await evm.runCall({
-          data: hexToBytes(params.bytecode as `0x${string}`),
+          data: hexToBytes(execBytecode as `0x${string}`),
           gasLimit,
           value: params.value ?? 0n,
           caller,
@@ -240,7 +307,7 @@ export class EthereumjsEngine implements EvmEngine {
           id: "root",
           type: "ROOT",
           codeAddress: params.to ?? DEFAULT_TO,
-          code: params.bytecode,
+          code: params.bytecode, // Store original bytecode, not the one with appended STOP
           input: params.calldata ?? "0x",
           value: params.value ?? 0n,
           caller: params.from ?? DEFAULT_CALLER,
@@ -256,7 +323,7 @@ export class EthereumjsEngine implements EvmEngine {
         frameStack.push(rootFrame);
 
         execResult = await evm.runCode({
-          code: hexToBytes(params.bytecode as `0x${string}`),
+          code: hexToBytes(execBytecode as `0x${string}`),
           data: params.calldata
             ? hexToBytes(params.calldata as `0x${string}`)
             : undefined,
@@ -307,6 +374,15 @@ export class EthereumjsEngine implements EvmEngine {
         }
       }
       await populateMissingCode(rootFrame);
+
+      // Remove synthetic STOP step if we appended one
+      // The synthetic STOP gave us the post-execution state of the previous step
+      if (appendedStop && rootFrame.steps.length > 0) {
+        const lastStep = rootFrame.steps[rootFrame.steps.length - 1];
+        if (lastStep.opcode === 0x00) { // STOP
+          rootFrame.steps.pop();
+        }
+      }
 
       return {
         root: rootFrame,

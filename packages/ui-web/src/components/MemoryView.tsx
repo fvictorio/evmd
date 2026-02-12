@@ -9,6 +9,7 @@ const BYTE_OFFSETS = Array.from({ length: 32 }, (_, i) =>
 export function MemoryView({ session }: { session: DebugSession }) {
   const [hoveredCol, setHoveredCol] = useState<number | null>(null);
   const step = session.currentStep;
+  const isFrameEnd = session.isAtFrameEnd;
 
   // At frame end, show the last step's memory state
   const frame = session.currentFrame;
@@ -23,10 +24,13 @@ export function MemoryView({ session }: { session: DebugSession }) {
     );
   }
 
-  const memory = displayStep.memory;
-  const hex = memory.current.startsWith("0x")
-    ? memory.current.slice(2)
-    : memory.current;
+  // At frame end, use post-execution memory; otherwise use pre-execution memory
+  const memoryHex = isFrameEnd && displayStep.memoryAfter
+    ? displayStep.memoryAfter
+    : displayStep.memory.current;
+  const hex = memoryHex.startsWith("0x")
+    ? memoryHex.slice(2)
+    : memoryHex;
 
   // Split into 32-byte (64 hex char) rows, then split each row into bytes
   const rows: string[][] = [];
