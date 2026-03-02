@@ -46,8 +46,16 @@ export interface DebuggerController {
   inputMode: "bytecode" | "mnemonic";
   setInputMode(mode: "bytecode" | "mnemonic"): void;
 
+  /** Execution mode: "deploy" runs as initcode, "call" runs as runtime code */
+  executionMode: "call" | "deploy";
+  setExecutionMode(mode: "call" | "deploy"): void;
+
   source: string;
   setSource(source: string): void;
+
+  /** Calldata for "call" mode (hex string) */
+  calldata: string;
+  setCalldata(calldata: string): void;
 
   execute(): Promise<void>;
 

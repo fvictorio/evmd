@@ -6,6 +6,33 @@ interface DisassembledInstruction {
   pc: number;
   mnemonic: string;
   operand?: string;
+  /** Human-readable decoded form of the immediate (e.g. "DUP17", "SWAP17", "1↔2"). */
+  annotation?: string;
+}
+
+/** Decode an EIP-8024 immediate byte into a human-readable annotation. */
+function decodeAnnotation(mnemonic: string, immediateHex: string): string | null {
+  const x = parseInt(immediateHex, 16);
+  if (isNaN(x)) return null;
+
+  if (mnemonic === "DUPN") {
+    const n = (x + 145) % 256;
+    return `DUP${n}`;
+  }
+  if (mnemonic === "SWAPN") {
+    const n = (x + 145) % 256;
+    return `SWAP${n}`;
+  }
+  if (mnemonic === "EXCHANGE") {
+    const k = x ^ 143;
+    const q = Math.floor(k / 16);
+    const r = k % 16;
+    // decode_pair: returns (n, m) where EXCHANGE swaps the 0-indexed stack
+    // positions n and m (equivalent to the EIP's "(n+1)th and (m+1)th items")
+    const [n, m] = q < r ? [q + 1, r + 1] : [r + 1, 29 - q];
+    return `[${n}↔${m}]`;
+  }
+  return null;
 }
 
 function disassembleWithPc(bytecode: string): DisassembledInstruction[] {
@@ -43,6 +70,7 @@ function disassembleWithPc(bytecode: string): DisassembledInstruction[] {
         pc: instrPc,
         mnemonic: info.mnemonic,
         operand: dataHex.length > 0 ? `0x${dataHex}` : undefined,
+        annotation: decodeAnnotation(info.mnemonic, dataHex) ?? undefined,
       });
     } else {
       instructions.push({
@@ -55,7 +83,13 @@ function disassembleWithPc(bytecode: string): DisassembledInstruction[] {
   return instructions;
 }
 
-export function BytecodeView({ session }: { session: DebugSession }) {
+export interface BytecodeViewProps {
+  session: DebugSession;
+  /** Whether to auto-scroll to keep current instruction visible. Defaults to true. */
+  autoScroll?: boolean;
+}
+
+export function BytecodeView({ session, autoScroll = true }: BytecodeViewProps) {
   const step = session.currentStep;
   const currentPc = step?.pc ?? -1;
   const isFrameEnd = session.isAtFrameEnd;
@@ -69,11 +103,13 @@ export function BytecodeView({ session }: { session: DebugSession }) {
   );
 
   useEffect(() => {
-    currentLineRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }, [currentPc, isFrameEnd]);
+    if (autoScroll) {
+      currentLineRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [currentPc, isFrameEnd, autoScroll]);
 
   return (
     <div className="evmd-panel evmd-bytecode-view">
@@ -95,21 +131,24 @@ export function BytecodeView({ session }: { session: DebugSession }) {
               {instr.operand && (
                 <span className="evmd-bytecode-operand">{instr.operand}</span>
               )}
+              {instr.annotation && (
+                <span className="evmd-stack-input-name">{instr.annotation}</span>
+              )}
             </div>
           );
         })}
-        {isFrameEnd && (
-          <div
-            ref={currentLineRef}
-            className="evmd-bytecode-line evmd-bytecode-current evmd-frame-end"
-          >
-            <span className="evmd-bytecode-arrow">→</span>
-            <span className="evmd-bytecode-pc">END</span>
+        <div
+          ref={isFrameEnd ? currentLineRef : undefined}
+          className={`evmd-bytecode-line evmd-frame-end${isFrameEnd ? " evmd-bytecode-current" : ""}`}
+        >
+          <span className="evmd-bytecode-arrow">{isFrameEnd ? "→" : " "}</span>
+          <span className="evmd-bytecode-pc">END</span>
+          {isFrameEnd && (
             <span className="evmd-bytecode-mnemonic evmd-frame-end-label">
               {session.currentFrame.result.exitReason.toUpperCase()}
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

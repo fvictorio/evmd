@@ -64,7 +64,6 @@ describe("EthereumjsEngine.execute", () => {
     expect(trace.metadata.mode).toBe("deploy");
     expect(trace.metadata.success).toBe(true);
     expect(trace.root.steps.length).toBeGreaterThan(0);
-    expect(trace.metadata.deployedAddress).toBeDefined();
 
     // Verify code field is set correctly for deploy mode
     expect(trace.root.code).toBe(bytecode);

@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      gh-pages:
+        specifier: ^6.3.0
+        version: 6.3.0
 
   packages/core:
     devDependencies:
@@ -41,6 +45,43 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4
+
+  packages/evm-tutorial:
+    dependencies:
+      '@evmd/core':
+        specifier: workspace:*
+        version: link:../core
+      '@evmd/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@evmd/ui-common':
+        specifier: workspace:*
+        version: link:../ui-common
+      '@evmd/ui-web':
+        specifier: workspace:*
+        version: link:../ui-web
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^4.0.0
+        version: 4.7.0(vite@6.4.1)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.1
 
   packages/playground:
     dependencies:

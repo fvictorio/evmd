@@ -121,6 +121,11 @@ const opcodeTable: OpcodeInfo[] = [
     []
   ),
 
+  // 0xe6-0xe8: EIP-8024 extended stack manipulation
+  op(0xe6, "DUPN", ["value"], ["value", "copy"], 1),
+  op(0xe7, "SWAPN", ["a", "b"], ["b", "a"], 1),
+  op(0xe8, "EXCHANGE", ["a", "b"], ["b", "a"], 1),
+
   // 0xf0s: System
   op(0xf0, "CREATE", ["value", "offset", "size"], ["address"]),
   op(

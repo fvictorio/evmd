@@ -53,6 +53,28 @@ h1 {
   resize: vertical;
 }
 
+.evmd-calldata-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.evmd-calldata-input label {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.evmd-calldata-input input {
+  flex: 1;
+  background: #16213e;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
 .evmd-controls {
   display: flex;
   gap: 6px;

@@ -212,9 +212,14 @@ export class EthereumjsEngine implements EvmEngine {
       };
 
       if (isRoot) {
-        // Override root frame's code/input to use original bytecode for better display
+        // Override root frame's code/input for better display
         newFrame.code = params.bytecode;
-        newFrame.input = params.bytecode;
+        // For deploy mode, input is the init code; for call mode, input is calldata
+        if (params.mode === "deploy") {
+          newFrame.input = params.bytecode;
+        } else {
+          newFrame.input = params.calldata ?? "0x";
+        }
         rootFrame = newFrame;
       } else if (parentFrame) {
         // Add as child of parent frame
@@ -286,69 +291,51 @@ export class EthereumjsEngine implements EvmEngine {
       // This ensures we get the final state from the synthetic STOP step
       const { bytecode: execBytecode, appendedStop } = ensureTerminalOpcode(params.bytecode);
 
-      let execResult;
-      let createdAddress: string | undefined;
+      let execResult: EVMResult;
+
+      const bytecodeBytes = hexToBytes(execBytecode as `0x${string}`);
 
       if (params.mode === "deploy") {
-        // Deploy: runCall with no `to` triggers CREATE semantics
-        const result = await evm.runCall({
-          data: hexToBytes(execBytecode as `0x${string}`),
+        // Deploy mode: use runCall with to=undefined to trigger CREATE behavior
+        // In CREATE, CALLDATASIZE returns 0 (init code is accessed via CODESIZE/CODECOPY)
+        execResult = await evm.runCall({
+          data: bytecodeBytes, // init code
           gasLimit,
           value: params.value ?? 0n,
           caller,
-          origin: caller,
-          skipBalance: true,
+          // to is undefined -> triggers CREATE behavior
         });
-        execResult = result.execResult;
-        createdAddress = result.createdAddress?.toString();
-      } else {
-        // Call: runCode doesn't fire beforeMessage, so create root frame manually
-        rootFrame = {
-          id: "root",
-          type: "ROOT",
-          codeAddress: params.to ?? DEFAULT_TO,
-          code: params.bytecode, // Store original bytecode, not the one with appended STOP
-          input: params.calldata ?? "0x",
-          value: params.value ?? 0n,
-          caller: params.from ?? DEFAULT_CALLER,
-          gas: gasLimit,
-          steps: [],
-          children: [],
-          result: {
-            exitReason: "success",
-            returnData: "0x",
-            gasUsed: 0n,
-          },
-        };
-        frameStack.push(rootFrame);
 
-        execResult = await evm.runCode({
-          code: hexToBytes(execBytecode as `0x${string}`),
+        // rootFrame is created by beforeMessageHandler
+      } else {
+        // Call mode: deploy code to target address, then call it
+        const toAddress = createAddressFromString(params.to ?? DEFAULT_TO);
+
+        // Put the code at the target address
+        await evm.stateManager.putCode(toAddress, bytecodeBytes);
+
+        execResult = await evm.runCall({
+          to: toAddress,
           data: params.calldata
             ? hexToBytes(params.calldata as `0x${string}`)
             : undefined,
           gasLimit,
           value: params.value ?? 0n,
           caller,
-          to: createAddressFromString(params.to ?? DEFAULT_TO),
         });
 
-        // Update root frame result
-        rootFrame.result = {
-          exitReason: execResult.exceptionError
-            ? mapExceptionToReason(execResult.exceptionError)
-            : "success",
-          returnData: bytesToHex(execResult.returnValue),
-          gasUsed: execResult.executionGasUsed,
-        };
+        // rootFrame is created by beforeMessageHandler
       }
 
-      // Sanity check: rootFrame should be set by now
+      // Sanity check: rootFrame should be set by now (it's set by beforeMessageHandler)
       if (!rootFrame) {
         throw new Error("Internal error: rootFrame not initialized");
       }
+      // TypeScript can't track that rootFrame is set by beforeMessageHandler,
+      // so we use a type assertion
+      const frame = rootFrame as Frame;
 
-      if (rootFrame.steps.length === 0) {
+      if (frame.steps.length === 0) {
         throw new Error(
           "Execution produced no steps. The bytecode may be empty or invalid."
         );
@@ -356,42 +343,47 @@ export class EthereumjsEngine implements EvmEngine {
 
       // Post-process: fetch code for frames that don't have it (e.g., CALL frames)
       // The code lives in the EVM state, so we need to fetch it from the stateManager
-      async function populateMissingCode(frame: Frame): Promise<void> {
-        if (frame.code === "0x" && frame.codeAddress) {
+      async function populateMissingCode(f: Frame): Promise<void> {
+        if (f.code === "0x" && f.codeAddress) {
           try {
-            const address = createAddressFromString(frame.codeAddress);
+            const address = createAddressFromString(f.codeAddress);
             const code = await evm.stateManager.getCode(address);
             if (code && code.length > 0) {
-              frame.code = bytesToHex(code);
+              f.code = bytesToHex(code);
             }
           } catch {
             // Ignore errors - code might not exist
           }
         }
         // Recurse into children
-        for (const child of frame.children) {
+        for (const child of f.children) {
           await populateMissingCode(child.frame);
         }
       }
-      await populateMissingCode(rootFrame);
+      await populateMissingCode(frame);
 
       // Remove synthetic STOP step if we appended one
       // The synthetic STOP gave us the post-execution state of the previous step
-      if (appendedStop && rootFrame.steps.length > 0) {
-        const lastStep = rootFrame.steps[rootFrame.steps.length - 1];
-        if (lastStep.opcode === 0x00) { // STOP
-          rootFrame.steps.pop();
+      // Only remove if the last step's PC matches where we appended the synthetic STOP
+      if (appendedStop && frame.steps.length > 0) {
+        const lastStep = frame.steps[frame.steps.length - 1];
+        // Calculate the PC where the synthetic STOP was appended
+        const originalHex = params.bytecode.startsWith("0x")
+          ? params.bytecode.slice(2)
+          : params.bytecode;
+        const syntheticStopPc = originalHex.length / 2;
+        if (lastStep.opcode === 0x00 && lastStep.pc === syntheticStopPc) {
+          frame.steps.pop();
         }
       }
 
       return {
-        root: rootFrame,
+        root: frame,
         metadata: {
           mode: params.mode === "deploy" ? "deploy" : "call",
-          success: !execResult.exceptionError,
-          returnData: bytesToHex(execResult.returnValue),
-          gasUsed: execResult.executionGasUsed,
-          deployedAddress: createdAddress,
+          success: !execResult.execResult.exceptionError,
+          returnData: bytesToHex(execResult.execResult.returnValue),
+          gasUsed: execResult.execResult.executionGasUsed,
         },
       };
     } finally {

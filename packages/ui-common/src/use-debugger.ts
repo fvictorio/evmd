@@ -18,8 +18,14 @@ const defaultPanelVisibility: PanelVisibility = {
   returnData: true,
 };
 
+// Default addresses for execution
+const DEFAULT_SENDER = "0x4f5b36c88Bf66720E9c3C07A0021587f5210635E";
+const DEFAULT_CONTRACT = "0x6F98b11D0B9659Ba12BAaEcCF17F3D7128aEadc8";
+
 export interface UseDebuggerOptions {
   initialSource?: string;
+  initialMode?: "call" | "deploy";
+  initialCalldata?: string;
 }
 
 export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): DebuggerController {
@@ -30,6 +36,8 @@ export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): De
   const [inputMode, setInputModeRaw] = useState<"bytecode" | "mnemonic">(
     "mnemonic"
   );
+  const [executionMode, setExecutionMode] = useState<"call" | "deploy">(options?.initialMode ?? "deploy");
+  const [calldata, setCalldata] = useState(options?.initialCalldata ?? "");
   const [error, setError] = useState<string | null>(null);
 
   // Dual-source state: each view has its own source text
@@ -100,13 +108,24 @@ export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): De
       } else {
         bytecode = bytecodeSource;
       }
-      const trace = await engine.execute({ bytecode, mode: "deploy" });
+
+      const trace = await engine.execute({
+        bytecode,
+        mode: executionMode,
+        from: DEFAULT_SENDER,
+        ...(executionMode === "call"
+          ? {
+              to: DEFAULT_CONTRACT,
+              calldata: calldata || undefined,
+            }
+          : {}),
+      });
       setSession(new DebugSession(trace));
       setError(null); // Clear error on successful execution
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [engine, inputMode, mnemonicSource, bytecodeSource]);
+  }, [engine, inputMode, mnemonicSource, bytecodeSource, executionMode, calldata]);
 
   const stepForward = useCallback(() => {
     session?.stepForward();
@@ -208,8 +227,12 @@ export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): De
     togglePanel,
     inputMode,
     setInputMode,
+    executionMode,
+    setExecutionMode,
     source,
     setSource,
+    calldata,
+    setCalldata,
     execute,
     error,
     dismissError,

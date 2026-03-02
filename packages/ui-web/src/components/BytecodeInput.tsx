@@ -21,6 +21,17 @@ export function BytecodeInput({
             <option value="bytecode">Bytecode</option>
           </select>
         </label>
+        <label>
+          <select
+            value={controller.executionMode}
+            onChange={(e) =>
+              controller.setExecutionMode(e.target.value as "call" | "deploy")
+            }
+          >
+            <option value="deploy">Deploy</option>
+            <option value="call">Call</option>
+          </select>
+        </label>
         <button onClick={() => controller.execute()}>Run</button>
       </div>
       <textarea
@@ -34,6 +45,18 @@ export function BytecodeInput({
         rows={10}
         spellCheck={false}
       />
+      {controller.executionMode === "call" && (
+        <div className="evmd-calldata-input">
+          <label>Calldata</label>
+          <input
+            type="text"
+            value={controller.calldata}
+            onChange={(e) => controller.setCalldata(e.target.value)}
+            placeholder="0x..."
+            spellCheck={false}
+          />
+        </div>
+      )}
     </div>
   );
 }

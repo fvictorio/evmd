@@ -5,11 +5,14 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "dev": "pnpm --filter playground dev",
-    "deploy": "pnpm build && pnpm --filter playground run deploy"
+    "deploy": "./scripts/deploy.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }
