@@ -24,6 +24,7 @@ const DEFAULT_CONTRACT = "0x6F98b11D0B9659Ba12BAaEcCF17F3D7128aEadc8";
 
 export interface UseDebuggerOptions {
   initialSource?: string;
+  initialInputMode?: "bytecode" | "mnemonic";
   initialMode?: "call" | "deploy";
   initialCalldata?: string;
 }
@@ -34,15 +35,16 @@ export function useDebugger(engine: EvmEngine, options?: UseDebuggerOptions): De
   const [breakpoints, setBreakpoints] = useState<Breakpoint[]>([]);
   const [visiblePanels, setVisiblePanels] = useState(defaultPanelVisibility);
   const [inputMode, setInputModeRaw] = useState<"bytecode" | "mnemonic">(
-    "mnemonic"
+    options?.initialInputMode ?? "mnemonic"
   );
   const [executionMode, setExecutionMode] = useState<"call" | "deploy">(options?.initialMode ?? "deploy");
   const [calldata, setCalldata] = useState(options?.initialCalldata ?? "");
   const [error, setError] = useState<string | null>(null);
 
   // Dual-source state: each view has its own source text
-  const [mnemonicSource, setMnemonicSource] = useState(options?.initialSource ?? "");
-  const [bytecodeSource, setBytecodeSource] = useState("");
+  const initialIsBytecode = options?.initialInputMode === "bytecode";
+  const [mnemonicSource, setMnemonicSource] = useState(initialIsBytecode ? "" : (options?.initialSource ?? ""));
+  const [bytecodeSource, setBytecodeSource] = useState(initialIsBytecode ? (options?.initialSource ?? "") : "");
   // Track what the current mnemonic last assembled to, so we can detect
   // whether bytecode was edited and decide whether to restore comments.
   const lastAssembledBytecodeRef = useRef<string | null>(null);

@@ -13,10 +13,13 @@ import { ErrorBanner } from "./components/ErrorBanner.js";
 export interface EvmDebuggerProps {
   engine: EvmEngine;
   initialSource?: string;
+  initialInputMode?: "bytecode" | "mnemonic";
+  initialMode?: "call" | "deploy";
+  initialCalldata?: string;
 }
 
-export function EvmDebugger({ engine, initialSource }: EvmDebuggerProps) {
-  const controller = useDebugger(engine, { initialSource });
+export function EvmDebugger({ engine, initialSource, initialInputMode, initialMode, initialCalldata }: EvmDebuggerProps) {
+  const controller = useDebugger(engine, { initialSource, initialInputMode, initialMode, initialCalldata });
 
   return (
     <div className="evmd">

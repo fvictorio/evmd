@@ -1,3 +1,5 @@
+import { useState, useCallback } from "react";
+import { assemble } from "@evmd/core";
 import type { DebuggerController } from "@evmd/ui-common";
 
 export function BytecodeInput({
@@ -5,6 +7,30 @@ export function BytecodeInput({
 }: {
   controller: DebuggerController;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = useCallback(() => {
+    let bytecode: string;
+    try {
+      bytecode = controller.inputMode === "mnemonic"
+        ? assemble(controller.source)
+        : controller.source;
+    } catch {
+      return; // Assembly error — Run will surface it anyway
+    }
+
+    const params = new URLSearchParams();
+    params.set("bytecode", bytecode);
+    params.set("mode", controller.executionMode);
+    if (controller.calldata) params.set("calldata", controller.calldata);
+
+    const url = `${window.location.origin}${window.location.pathname}?${params}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [controller]);
+
   return (
     <div className="evmd-bytecode-input">
       <div className="evmd-input-header">
@@ -33,6 +59,7 @@ export function BytecodeInput({
           </select>
         </label>
         <button onClick={() => controller.execute()}>Run</button>
+        <button onClick={handleShare}>{copied ? "Copied!" : "Share"}</button>
       </div>
       <textarea
         value={controller.source}

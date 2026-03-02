@@ -27,13 +27,30 @@ CALL
 STOP
 `;
 
+function getUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const bytecode = params.get("bytecode");
+  const mode = params.get("mode");
+  const calldata = params.get("calldata");
+  if (!bytecode) return null;
+  return {
+    initialSource: bytecode,
+    initialInputMode: "bytecode" as const,
+    initialMode: (mode === "call" || mode === "deploy") ? mode : "deploy" as const,
+    initialCalldata: calldata ?? undefined,
+  };
+}
+
+const URL_PARAMS = getUrlParams();
+
 export function App() {
   const engine = useMemo(() => new EthereumjsEngine(), []);
+  const initial = URL_PARAMS ?? { initialSource: EXAMPLE_SOURCE };
 
   return (
     <div className="app">
       <h1>EVM Debugger</h1>
-      <EvmDebugger engine={engine} initialSource={EXAMPLE_SOURCE} />
+      <EvmDebugger engine={engine} {...initial} />
     </div>
   );
 }
