@@ -29,7 +29,11 @@ export function ExecutionControls({
       >
         Step Out
       </button>
-      <button onClick={controller.continueForward} disabled={true} title="Requires breakpoints">
+      <button
+        onClick={controller.continueForward}
+        disabled={disabled || controller.breakpoints.length === 0}
+        title={controller.breakpoints.length === 0 ? "Add a breakpoint first" : "Continue to next breakpoint"}
+      >
         Continue
       </button>
       <button onClick={controller.jumpToStart} disabled={disabled}>

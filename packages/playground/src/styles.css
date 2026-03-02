@@ -4,6 +4,10 @@
   padding: 0;
 }
 
+html {
+  overflow-y: scroll; /* always reserve scrollbar space to prevent layout shift */
+}
+
 body {
   font-family: "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas,
     "DejaVu Sans Mono", monospace;
@@ -246,6 +250,23 @@ select {
 .evmd-bytecode-current {
   background: #2a4a6e;
   border-radius: 2px;
+}
+
+.evmd-breakpoint-gutter {
+  color: #444;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+}
+
+.evmd-breakpoint-gutter:hover {
+  color: #f87171;
+}
+
+.evmd-breakpoint-active {
+  color: #f87171;
 }
 
 .evmd-bytecode-arrow {

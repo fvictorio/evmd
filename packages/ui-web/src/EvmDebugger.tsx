@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import type { EvmEngine } from "@evmd/engine";
 import { useDebugger } from "@evmd/ui-common";
 import { BytecodeInput } from "./components/BytecodeInput.js";
@@ -21,6 +22,17 @@ export interface EvmDebuggerProps {
 export function EvmDebugger({ engine, initialSource, initialInputMode, initialMode, initialCalldata }: EvmDebuggerProps) {
   const controller = useDebugger(engine, { initialSource, initialInputMode, initialMode, initialCalldata });
 
+  const handleToggleBreakpoint = useCallback((pc: number, code: string) => {
+    const existing = controller.breakpoints.find(
+      (bp) => bp.condition.pc === pc && bp.condition.code === code
+    );
+    if (existing) {
+      controller.removeBreakpoint(existing.id);
+    } else {
+      controller.addBreakpoint({ pc, code });
+    }
+  }, [controller]);
+
   return (
     <div className="evmd">
       <BytecodeInput controller={controller} />
@@ -34,7 +46,11 @@ export function EvmDebugger({ engine, initialSource, initialInputMode, initialMo
       {controller.session && (
         <div className="evmd-panels">
           {controller.visiblePanels.bytecode && (
-            <BytecodeView session={controller.session} />
+            <BytecodeView
+              session={controller.session}
+              breakpoints={controller.breakpoints}
+              onToggleBreakpoint={handleToggleBreakpoint}
+            />
           )}
           {controller.visiblePanels.stack && (
             <StackView session={controller.session} />

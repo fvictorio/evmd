@@ -147,27 +147,53 @@ export class DebugSession {
     this._globalStepIndex = this.flatSteps.length - 1;
   }
 
-  // --- Breakpoints (stubs) ---
+  // --- Breakpoints ---
 
-  addBreakpoint(_condition: BreakpointCondition): Breakpoint {
-    throw new Error("addBreakpoint() not yet implemented");
+  private _breakpoints: Breakpoint[] = [];
+  private _nextBreakpointId = 0;
+
+  addBreakpoint(condition: BreakpointCondition): Breakpoint {
+    const bp: Breakpoint = { id: `bp-${this._nextBreakpointId++}`, condition };
+    this._breakpoints.push(bp);
+    return bp;
   }
 
-  removeBreakpoint(_id: string): void {
-    // no-op for now
+  removeBreakpoint(id: string): void {
+    this._breakpoints = this._breakpoints.filter((bp) => bp.id !== id);
   }
 
   getBreakpoints(): Breakpoint[] {
-    return [];
+    return [...this._breakpoints];
+  }
+
+  private _matchesBreakpoint(stepIndex: number): boolean {
+    if (this._breakpoints.length === 0) return false;
+    const flat = this.flatSteps[stepIndex];
+    if (flat.isFrameEnd) return false;
+    const step = flat.frame.steps[flat.stepIndex];
+    return this._breakpoints.some((bp) => {
+      const c = bp.condition;
+      if (c.code !== undefined && c.code !== flat.frame.code) return false;
+      if (c.pc !== undefined && c.pc !== step.pc) return false;
+      if (c.opcode !== undefined && c.opcode !== step.opcode) return false;
+      if (c.globalStepIndex !== undefined && c.globalStepIndex !== stepIndex) return false;
+      return true;
+    });
   }
 
   continueForward(): boolean {
-    // TODO: implement with breakpoint matching
+    while (this._globalStepIndex < this.flatSteps.length - 1) {
+      this._globalStepIndex++;
+      if (this._matchesBreakpoint(this._globalStepIndex)) return true;
+    }
     return false;
   }
 
   continueBackward(): boolean {
-    // TODO: implement with breakpoint matching
+    while (this._globalStepIndex > 0) {
+      this._globalStepIndex--;
+      if (this._matchesBreakpoint(this._globalStepIndex)) return true;
+    }
     return false;
   }
 

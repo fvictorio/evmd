@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef } from "react";
-import type { DebugSession } from "@evmd/core";
+import type { Breakpoint, DebugSession } from "@evmd/core";
 import { getOpcodeByCode } from "@evmd/core";
 
 interface DisassembledInstruction {
@@ -87,15 +87,30 @@ export interface BytecodeViewProps {
   session: DebugSession;
   /** Whether to auto-scroll to keep current instruction visible. Defaults to true. */
   autoScroll?: boolean;
+  breakpoints?: Breakpoint[];
+  onToggleBreakpoint?: (pc: number, code: string) => void;
 }
 
-export function BytecodeView({ session, autoScroll = true }: BytecodeViewProps) {
+export function BytecodeView({ session, autoScroll = true, breakpoints = [], onToggleBreakpoint }: BytecodeViewProps) {
   const step = session.currentStep;
   const currentPc = step?.pc ?? -1;
   const isFrameEnd = session.isAtFrameEnd;
   const frame = session.currentFrame;
   const bytecode = frame.code;
+  const listingRef = useRef<HTMLDivElement>(null);
   const currentLineRef = useRef<HTMLDivElement>(null);
+
+  // Build a set of breakpointed PCs for the current frame's code
+  const breakpointedPcs = useMemo(() => {
+    const pcs = new Set<number>();
+    for (const bp of breakpoints) {
+      if (bp.condition.pc !== undefined &&
+          (bp.condition.code === undefined || bp.condition.code === bytecode)) {
+        pcs.add(bp.condition.pc);
+      }
+    }
+    return pcs;
+  }, [breakpoints, bytecode]);
 
   const instructions = useMemo(
     () => disassembleWithPc(bytecode),
@@ -103,26 +118,37 @@ export function BytecodeView({ session, autoScroll = true }: BytecodeViewProps) 
   );
 
   useEffect(() => {
-    if (autoScroll) {
-      currentLineRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
+    if (!autoScroll || !listingRef.current || !currentLineRef.current) return;
+    const container = listingRef.current;
+    const el = currentLineRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const elOffsetInContainer = elRect.top - containerRect.top + container.scrollTop;
+    const targetScrollTop =
+      elOffsetInContainer - container.clientHeight / 2 + el.clientHeight / 2;
+    container.scrollTop = Math.max(0, targetScrollTop);
   }, [currentPc, isFrameEnd, autoScroll]);
 
   return (
     <div className="evmd-panel evmd-bytecode-view">
       <h3>Bytecode</h3>
-      <div className="evmd-bytecode-listing">
+      <div className="evmd-bytecode-listing" ref={listingRef}>
         {instructions.map((instr) => {
           const isCurrent = instr.pc === currentPc;
+          const hasBreakpoint = breakpointedPcs.has(instr.pc);
           return (
             <div
               key={instr.pc}
               ref={isCurrent ? currentLineRef : undefined}
               className={`evmd-bytecode-line${isCurrent ? " evmd-bytecode-current" : ""}`}
             >
+              <span
+                className={`evmd-breakpoint-gutter${hasBreakpoint ? " evmd-breakpoint-active" : ""}`}
+                onClick={() => onToggleBreakpoint?.(instr.pc, bytecode)}
+                title={hasBreakpoint ? "Remove breakpoint" : "Add breakpoint"}
+              >
+                {hasBreakpoint ? "●" : "·"}
+              </span>
               <span className="evmd-bytecode-arrow">{isCurrent ? "→" : " "}</span>
               <span className="evmd-bytecode-pc">
                 {instr.pc.toString().padStart(4, " ")}

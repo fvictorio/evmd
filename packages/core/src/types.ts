@@ -151,7 +151,10 @@ export interface FlatStep {
 }
 
 export interface BreakpointCondition {
-  /** Break when PC reaches this value (within any frame). */
+  /** Scope the breakpoint to frames running this exact bytecode string.
+   *  If absent, the breakpoint matches any frame. */
+  code?: string;
+  /** Break when PC reaches this value. */
   pc?: number;
   /** Break when this opcode is about to execute. */
   opcode?: number;
