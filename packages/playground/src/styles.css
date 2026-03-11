@@ -134,7 +134,8 @@ select {
   border-radius: 4px;
   padding: 12px;
   min-width: 0;
-  overflow: hidden;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .evmd-bytecode-view {
@@ -235,8 +236,6 @@ select {
 }
 
 .evmd-bytecode-listing {
-  max-height: 300px;
-  overflow-y: auto;
   font-size: 0.8rem;
 }
 
